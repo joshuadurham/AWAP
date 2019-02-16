@@ -71,7 +71,7 @@ class Team(object):
                 self.cost_map[boothY][boothX] = None
             for (lineX, lineY) in self.line_squares[company]:
                 valueMap[lineY][lineX] = companyPoints[company]
-        
+
         self.value_map = valueMap
         self.team_size = team_size
         self.team_name = 'Al-bro-rithms'
@@ -83,17 +83,13 @@ class Team(object):
         For more information on what visible_board, states, and score
         are, please look on the wiki.
         """
-        #print(states)
-        print(self.cost_map)
-        print(self.value_map)
+
+        # Update cost map based on vurrent visibility
         for yIdx in range(len(visible_board)):
             for xIdx in range(len(visible_board[0])):
                 tile = visible_board[yIdx][xIdx]
                 if(self.cost_map[yIdx][xIdx] is not None and tile.is_visible()):
                     (currCost, currCount) = self.cost_map[yIdx][xIdx]
                     self.cost_map[yIdx][xIdx] = (currCost + tile.get_threshold(), currCount + 1)
-        print(self.cost_map)
-
-
 
         return [Direction.UP, Direction.UP, Direction.UP, Direction.UP]
