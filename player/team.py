@@ -23,10 +23,29 @@ class Team(object):
         on the wiki. team_size, although passed to you as a parameter, will
         always be 4.
         """
-        self.board = initial_board
-        self.team_size = team_size
-        self.company_info = company_info
+        companyNames = []
+        companyPoints = {}
+        boothSquares = {}
+        lineSquares = {}
+        for company in company_info:
+            companyNames.append(company)
+        self.company_names = companyNames
+        for company in companyNames:
+            companyPoints[company] = company_info[company]
+            boothSquares[company] = []
+            lineSquares[company] = []
+        self.company_points = company_info
 
+        for yIdx in range(len(initial_board)):
+            for xIdx in range(len(initial_board[0])):
+                tile = initial_board[yIdx][xIdx]
+                if(tile.get_booth() is not None):
+                    boothSquares[tile.get_booth()].append((xIdx,yIdx))
+                if(tile.get_line() is not None):
+                    lineSquares[tile.get_line()].append((xIdx,yIdx))
+        self.board = initial_board
+
+        self.team_size = team_size
         self.team_name = 'Al-bro-rithms'
 
     def step(self, visible_board, states, score):
@@ -36,5 +55,4 @@ class Team(object):
         For more information on what visible_board, states, and score
         are, please look on the wiki.
         """
-
-        pass
+        return [Direction.UP, Direction.UP, Direction.UP, Direction.UP]

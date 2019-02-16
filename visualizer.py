@@ -18,7 +18,7 @@ flags.DEFINE_string("board_file", "tiny", "The board file to read from.")
 flags.DEFINE_string("log_directory", "logs/", "Directory of logs.")
 flags.DEFINE_string("log_file", "out", "Log file to read from.")
 
-flags.DEFINE_integer("speed", 40, "# of intervals between one turn in the game.")
+flags.DEFINE_integer("speed", 5, "# of intervals between one turn in the game.")
 
 FLAGS(sys.argv)
 
