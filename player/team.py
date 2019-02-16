@@ -24,6 +24,8 @@ class Team(object):
         always be 4.
         """
         companyNames = []
+        mapWidth = len(initial_board[0])
+        mapHeight = len(initial_board)
         companyPoints = {}
         boothSquares = {}
         lineSquares = {}
@@ -47,6 +49,35 @@ class Team(object):
         self.booth_squares = boothSquares
         self.line_squares = lineSquares
 
+        costMap = []
+        for yIdx in range(mapHeight):
+            nextRow = []
+            for xIdx in range(mapWidth):
+                # (Total sum of costs, number of readings)
+                nextRow.append((1,1))
+            costMap.append(nextRow)
+
+        self.cost_map = costMap
+
+        valueMap = []
+        for yIdx in range(mapHeight):
+            nextRow = []
+            for xIdx in range(mapWidth):
+                nextRow.append(0)
+            valueMap.append(nextRow)
+
+        for company in companyNames:
+            for (boothX, boothY) in self.booth_squares[company]:
+                self.cost_map[boothY][boothX] = None
+            for (lineX, lineY) in self.line_squares[company]:
+                valueMap[lineY][lineX] = companyPoints[company]
+        
+        self.value_map = valueMap
+
+        print(self.cost_map)
+        print(self.value_map)
+
+
         self.team_size = team_size
         self.team_name = 'Al-bro-rithms'
 
@@ -57,4 +88,8 @@ class Team(object):
         For more information on what visible_board, states, and score
         are, please look on the wiki.
         """
+        
+
+
+
         return [Direction.UP, Direction.UP, Direction.UP, Direction.UP]
