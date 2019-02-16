@@ -182,7 +182,7 @@ class Team(object):
                 #If one is a line tile, figure out which line, estimate how
                 #long the line is, decide if worthwhile
                 tile = arr[tilex][tiley]
-                if(tile.is_end_of_line() and not self.blacklist[tilex][tiley]):
+                if(tile.is_end_of_line() and self.blacklist[tilex][tiley]==0):
                     if self.company_points[tile.get_line()] > maxval:
                         maxxy = (tilex,tiley)
                         maxval = self.company_points[tile.get_line()]
