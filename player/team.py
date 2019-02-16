@@ -89,8 +89,7 @@ class Team(object):
         for yIdx in range(len(visible_board)):
             for xIdx in range(len(visible_board[0])):
                 tile = visible_board[yIdx][xIdx]
-                numBots = tile.get_num_bots()
-                if(self.cost_map[yIdx][xIdx] is not None):
+                if(self.cost_map[yIdx][xIdx] is not None and tile.is_visible()):
                     (currCost, currCount) = self.cost_map[yIdx][xIdx]
                     self.cost_map[yIdx][xIdx] = (currCost + tile.get_threshold(), currCount + 1)
         print(self.cost_map)
