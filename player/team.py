@@ -11,6 +11,12 @@ sdave
 ariedelm
 """
 from awap2019 import Tile, Direction, State
+from enum import Enum
+class AI_STATE(Enum):
+    LONG_DIST_EXPL = 1
+    NAV_TO_CLOSE = 2
+    IN_LINE = 3
+    NO_STATE = 4
 
 class Team(object):
     def __init__(self, initial_board, team_size, company_info):
@@ -45,6 +51,7 @@ class Team(object):
                     boothSquares[tile.get_booth()].append((xIdx,yIdx))
                 if(tile.get_line() is not None):
                     lineSquares[tile.get_line()].append((xIdx,yIdx))
+                print(tile.is_end_of_line())
         self.board = initial_board
         self.booth_squares = boothSquares
         self.line_squares = lineSquares
@@ -73,6 +80,7 @@ class Team(object):
                 valueMap[lineY][lineX] = companyPoints[company]
 
         self.prev_line_states = [-1,-1,-1,-1]
+        self.AI_STATE = [(AI_STATE.NO_STATE, None), (AI_STATE.NO_STATE, None), (AI_STATE.NO_STATE, None), (AI_STATE.NO_STATE, None)]
         
         ### PARAMETERS
         self.threshold = 1
@@ -123,6 +131,10 @@ class Team(object):
                     self.cost_map[yIdx][xIdx] = (currCost + tile.get_threshold(), currCount + 1)
 
 
+        ### TODO: UPDATE AI STATE
+        newAIState = []
+
+        self.AI_STATE = newAIState
         self.prev_score = score
         self.prev_line_states = playerLinePos
-        return [Direction.UP, Direction.UP, Direction.UP, Direction.UP]
+        return [Direction.LEFT, Direction.LEFT, Direction.LEFT, Direction.LEFT]

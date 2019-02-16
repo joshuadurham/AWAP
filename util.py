@@ -46,7 +46,11 @@ def get_neighbors(x, y, m, n):
 
 def get_cost(cost_map, v):
     C = cost_map[v[0]][v[1]]
-    return C if C != None else 10000000
+    if (C is None):
+        return 1000000000
+    else:
+        (sum, count) = C
+        return sum/count
 
 
 def dijkstra(source, dest, cost_map):
@@ -83,6 +87,4 @@ def dijkstra(source, dest, cost_map):
 
     map = helper(X, frontier)
 
-    return map[dest][1]
-
-print(dijkstra((0,0),(2,3),[[2,3,1,6],[5,6,4,1],[7,2,3,8]]))
+    return map[dest][1] + [dest]
