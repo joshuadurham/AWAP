@@ -15,8 +15,9 @@ from enum import Enum
 class AI_STATE(Enum):
     LONG_DIST_EXPL = 1
     NAV_TO_CLOSE = 2
-    IN_LINE = 3
-    NO_STATE = 4
+    ENTERING_LINE=3
+    IN_LINE = 4
+    NO_STATE = 5
 
 class Team(object):
     def __init__(self, initial_board, team_size, company_info):
@@ -80,7 +81,7 @@ class Team(object):
                 valueMap[lineY][lineX] = companyPoints[company]
 
         self.prev_line_states = [-1,-1,-1,-1]
-        self.AI_STATE = [(AI_STATE.NO_STATE, None), (AI_STATE.NO_STATE, None), (AI_STATE.NO_STATE, None), (AI_STATE.NO_STATE, None)]
+        self.ai_state = [(AI_STATE.NO_STATE, None), (AI_STATE.NO_STATE, None), (AI_STATE.NO_STATE, None), (AI_STATE.NO_STATE, None)]
         
         ### PARAMETERS
         self.threshold = 1
@@ -228,9 +229,45 @@ class Team(object):
                     (currCost, currCount) = self.cost_map[yIdx][xIdx]
                     self.cost_map[yIdx][xIdx] = (currCost + tile.get_threshold(), currCount + 1)
 
-
-        ### TODO: UPDATE AI STATE
         newAIState = []
+
+        for stateIdx in range(len(self.ai_state)):
+            (state, position) = self.ai_state[stateIdx]
+            newState = AI_STATE.NO_STATE
+            if(state == AI_STATE.NO_STATE):
+                newState = AI_STATE.LONG_DIST_EXPL
+                (goalX, goalY) = getOptPosition()
+                newAIState.append((newState, (goalX, goalY)))
+            elif (state == AI_STATE.NAV_TO_CLOSE):
+                (goalX, goalY) = position
+                (playerX, playerY) = playerCoord[stateIdx]
+                if(playerX == goalX and playerY == goalY):
+                    newState = AI_STATE.NAV_TO_CLOSE
+                    newAIState.append((newState, None))
+                else:
+                    newAIState.append((state, position))
+            elif (state == AI_STATE.ENTERING_LINE):
+                currentLineState = playerLinePos[stateIdx]
+                if(currentLineState >= 0):
+                    newState = AI_STATE.IN_LINE
+                    newAIState.append((newState, None))
+                else:
+                    newAIState.append((state, None))
+            elif(state == AI_STATE.IN_LINE):
+                currentLineState = playerLinePos[stateIdx]
+                if (currentLineState == -1 or not self.should_i_stay(states[stateIdx], visible_board)):
+                    newState = AI_STATE.LONG_DIST_EXPL
+                    (goalX, goalY) = getOptPosition()
+                    newAIState.append((newState, (goalX, goalY)))
+                else:
+                    newAIState.append((state, None))
+            else:
+                if(self.should_enter_line(visible_board, states[stateIdx]) is not None):
+                    newState = AI_STATE.NAV_TO_CLOSE
+                    (goalX, goalY) = self.should_enter_line(visible_board, states[stateIdx])
+                    newAIState.append((newState, (goalX, goalY)))
+                else:
+                    newAIState.append((state, position))
 
         self.AI_STATE = newAIState
         self.prev_score = score
