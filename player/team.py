@@ -231,6 +231,12 @@ class Team(object):
 
         newAIState = []
 
+        def convert_path_to_dir(path):
+            result = []
+            for i in range(path[:-1])
+                result.append(Direction.get_dir(path[i], path[i+1]))
+            return result
+
         for stateIdx in range(len(self.ai_state)):
             (state, position) = self.ai_state[stateIdx]
             newState = AI_STATE.NO_STATE
