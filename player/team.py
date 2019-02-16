@@ -72,6 +72,11 @@ class Team(object):
             for (lineX, lineY) in self.line_squares[company]:
                 valueMap[lineY][lineX] = companyPoints[company]
 
+        self.prev_line_states = [-1,-1,-1,-1]
+        
+        ### PARAMETERS
+        self.threshold = 1
+
         self.value_map = valueMap
         self.team_size = team_size
         self.team_name = 'Al-bro-rithms'
@@ -83,8 +88,33 @@ class Team(object):
         For more information on what visible_board, states, and score
         are, please look on the wiki.
         """
+        playerDirections = []
+        playerIDs = []
+        playerCoord = []
+        playerProgress = []
+        playerThreshold = []
+        playerLinePos = []
+        for stateIdx in range(len(states)):
+            state = states[stateIdx]
+            playerDirections.append(state.dir)
+            playerIDs.append(state.id)
+            playerCoord.append((state.x, state.y))
+            playerProgress.append(state.progress)
+            playerThreshold.append(state.threshold)
+            playerLinePos.append(state.line_pos)
 
-        # Update cost map based on vurrent visibility
+        for linePosIdx in range(len(playerLinePos)):
+            oldLinePos = self.prev_line_states[linePosIdx]
+            currLinePos = playerLinePos[linePosIdx]
+            if (oldLinePos == 0 and currLinePos == -1):
+                (xCoord, yCoord) = playerCoord[linePosIdx]
+                companyName = self.board[yCoord][xCoord]
+                self.company_points[companyName] = self.company_points[companyName]//2
+                lineCoords = self.line_squares[companyName]
+                for (lineXCoord, lineYCoord) in lineCoords:
+                    self.value_map[lineYCoord, lineXCoord] = self.company_points[companyName]
+
+        # Update cost map based on current visibility
         for yIdx in range(len(visible_board)):
             for xIdx in range(len(visible_board[0])):
                 tile = visible_board[yIdx][xIdx]
@@ -92,4 +122,7 @@ class Team(object):
                     (currCost, currCount) = self.cost_map[yIdx][xIdx]
                     self.cost_map[yIdx][xIdx] = (currCost + tile.get_threshold(), currCount + 1)
 
+
+        self.prev_score = score
+        self.prev_line_states = playerLinePos
         return [Direction.UP, Direction.UP, Direction.UP, Direction.UP]
