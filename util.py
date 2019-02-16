@@ -44,6 +44,11 @@ def get_neighbors(x, y, m, n):
     neighbors = filter(lambda v: v[0] >= 0 and v[0] < n and v[1] >= 0 and v[1] < m, neighbors)
     return list(neighbors)
 
+def get_cost(cost_map, v):
+    C = cost_map[v[0]][v[1]]
+    return C if C != None else 10000000
+
+
 def dijkstra(source, dest, cost_map):
 
     m = len(cost_map[0])
@@ -67,7 +72,7 @@ def dijkstra(source, dest, cost_map):
         neighbors = get_neighbors(vertex[0], vertex[1], m, n)
         for neighbor in neighbors:
             if neighbor not in visited:
-                frontier.push((neighbor, path+[vertex]), priority + cost_map[neighbor[0]][neighbor[1]])
+                frontier.push((neighbor, path+[vertex]), priority + get_cost(cost_map, neighbor))
 
 
         return helper(visited, frontier)
