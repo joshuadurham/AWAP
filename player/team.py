@@ -88,7 +88,105 @@ class Team(object):
         self.value_map = valueMap
         self.team_size = team_size
         self.team_name = 'Al-bro-rithms'
+        self.blacklist = initial_board
+        for i in range(len(self.blacklist)):
+            for j in range(len(self.blacklist[0])):
+                self.blacklist[i][j] = 0
+        
+    def fuzzy_enter_line(self, state, arr, x, y):
+        # Tries to enter line at x,y
+        tile = arr[x][y]
+        company = tile.get_line()
+        if not tile.is_visible():
+            return None
+        if tile.is_end_of_line():
+            return (x,y)
+        else:
+            for i in range(x-1, x+2):
+                for j in range(y-1, y+2):
+                    if abs(i+j - x-y) != 1:
+                        continue
+                    if arr[i][j].is_end_of_line() and arr[i][j].is_visible() and arr[i][j].get_line() == company:
+                        return (i,j)
+        return None
+    def get_lin_dir(x, y, i, j):
+        diffx = i-x
+        diffy = j-y
+        if diffx < 0:
+            return Direction.UP
+        if diffx > 0:
+            return Direction.DOWN
+        if diffy < 0:
+            return Direction.LEFT
+        if diffy > 0:
+            return Direction.RIGHT
+        return Direction.NONE
 
+    def enter_line(self, state, arr):
+        if arr[state.x, state.y].is_end_of_line():
+            return Direction.ENTER
+        else:
+            i = self.fuzzy_enter_line(state, arr, state.x, state.y)
+            if i is None:
+                return None
+            else:
+                return get_lin_dir((state.x, state.y), i)
+
+    def should_i_stay(self, state, arr):
+        s = state.line_pos
+        if s == -1:
+            return None
+        points = self.company_points[arr[state.x][state.y].get_line()]
+        if points/s < threshold:
+            self.blacklist[state.x][state.y] = 10
+            return False
+        return True
+    def should_enter_line(self, arr, state):
+        """
+        Determines if bots should enter nearby line, based on lower-bounding
+        length and using threshold basis for optimality
+        """
+        # self.threshold = 2
+        # def line_cost(x, y):
+        #     # Given line tile at x and y, determines how worthwhile line is
+        #     # cost/(length_of_line).
+        #     tile = arr[x][y]
+        #     company = tile.get_line()
+        #     if company is None:
+        #         return ("NO", -1, 1)
+        #     startx,starty = (0,0) #self.company_line_starts[company]
+        #     numpeeps = tile.get_num_bots()
+        #     if numpeeps == 0:
+        #         totleng = (3*(abs(startx-x) + abs(starty-y)), "l") #one is zero
+        #     elif numpeeps == 3:
+        #         totleng = (3*(abs(startx-x) + abs(starty-y) + 1), "g")
+        #     else:
+        #         totleng = (3*(abs(startx-x) + abs(starty-y)) + numpeeps, "e")
+        #     value = self.company_points[company]
+        #     if((totleng[1] == "g" or totleng[1] == "e")
+        #        and value/totleng[0] <= self.threshold):
+        #        return ("NO", totleng, value)
+        #     if((totleng[1] == "l" or totleng[1] == "e")
+        #        and value/totleng[0] > self.threshold):
+        #        return ("YES", totleng, value)
+        #     return ("MAYBE", totleng, value)
+
+        maxval = 0
+        maxxy = None
+        if state.progress != 0 or state.line_pos != -1:
+            return maxxy
+        x,y = state.x, state.y
+        for tilex in range(max(x-2, 0), min(x+3, len(arr))):
+            for tiley in range(max(y-2, 0), min(y+3, len(arr[0]))):
+                #Represents visible tiles for this bot
+                #If one is a line tile, figure out which line, estimate how
+                #long the line is, decide if worthwhile
+                tile = arr[tilex][tiley]
+                if(tile.is_end_of_line() and not self.blacklist[tilex][tiley]):
+                    if self.company_points[tile.get_line()] > maxval:
+                        maxxy = (tilex,tiley)
+                        maxval = self.company_points[tile.get_line()]
+        return maxxy
     def step(self, visible_board, states, score):
         """
         The step function should return a list of four Directions.
