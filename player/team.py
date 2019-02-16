@@ -44,6 +44,8 @@ class Team(object):
                 if(tile.get_line() is not None):
                     lineSquares[tile.get_line()].append((xIdx,yIdx))
         self.board = initial_board
+        self.booth_squares = boothSquares
+        self.line_squares = lineSquares
 
         self.team_size = team_size
         self.team_name = 'Al-bro-rithms'
