@@ -12,6 +12,9 @@ ariedelm
 """
 from awap2019 import Tile, Direction, State
 from enum import Enum
+from player.util import dijkstra
+import numpy as np
+from numpy import unravel_index
 class AI_STATE(Enum):
     LONG_DIST_EXPL = 1
     NAV_TO_CLOSE = 2
@@ -45,14 +48,13 @@ class Team(object):
             lineSquares[company] = []
         self.company_points = company_info
 
-        for yIdx in range(len(initial_board)):
-            for xIdx in range(len(initial_board[0])):
-                tile = initial_board[yIdx][xIdx]
+        for yIdx in range(len(initial_board[0])):
+            for xIdx in range(len(initial_board)):
+                tile = initial_board[xIdx][yIdx]
                 if(tile.get_booth() is not None):
                     boothSquares[tile.get_booth()].append((xIdx,yIdx))
                 if(tile.get_line() is not None):
                     lineSquares[tile.get_line()].append((xIdx,yIdx))
-                print(tile.is_end_of_line())
         self.board = initial_board
         self.booth_squares = boothSquares
         self.line_squares = lineSquares
@@ -76,23 +78,54 @@ class Team(object):
 
         for company in companyNames:
             for (boothX, boothY) in self.booth_squares[company]:
-                self.cost_map[boothY][boothX] = None
+                self.cost_map[boothX][boothY] = None
             for (lineX, lineY) in self.line_squares[company]:
-                valueMap[lineY][lineX] = companyPoints[company]
+                valueMap[lineX][lineY] = companyPoints[company]
 
         self.prev_line_states = [-1,-1,-1,-1]
         self.ai_state = [(AI_STATE.NO_STATE, None), (AI_STATE.NO_STATE, None), (AI_STATE.NO_STATE, None), (AI_STATE.NO_STATE, None)]
         
         ### PARAMETERS
-        self.threshold = 1
+        self.threshold = 5
 
         self.value_map = valueMap
         self.team_size = team_size
         self.team_name = 'Al-bro-rithms'
-        self.blacklist = initial_board
-        for i in range(len(self.blacklist)):
-            for j in range(len(self.blacklist[0])):
-                self.blacklist[i][j] = 0
+        blacklist = []
+        for yIdx in range(mapHeight):
+            nextRow = []
+            for xIdx in range(mapWidth):
+                nextRow.append(0)
+            blacklist.append(nextRow)
+        self.blacklist = blacklist
+
+    def get_dest(self, agent=None):
+        m = len(self.value_map)
+        n = len(self.value_map[0])
+
+        if agent == None:
+            a = np.array(self.value_map)
+            res = list(unravel_index(a.argmax(), a.shape))
+            if (res[0] >= len(self.cost_map)):
+                res[0] = self.line_squares[self.company_names[0]][0][0]
+            if (res[1] >= len(self.cost_map[0])):
+                res[1] = self.line_squares[self.company_names[0]][0][1]
+            return tuple(res)
+        else:
+            value_map_tl = (np.array(list(map(lambda v: v[:n//2], self.value_map[:m//2]))), 0, 0)
+            value_map_tr = (np.array(list(map(lambda v: v[n//2:], self.value_map[:m//2]))), n//2, 0)
+            value_map_bl = (np.array(list(map(lambda v: v[:n//2], self.value_map[m//2:]))), 0, m//2)
+            value_map_br = (np.array(list(map(lambda v: v[n//2:], self.value_map[m//2:]))), n//2, m//2)
+
+            value_maps = sorted([value_map_tl, value_map_tr, value_map_bl, value_map_br], key=lambda v: v[0].max(), reverse=True)
+
+            x, y = unravel_index(value_maps[agent][0].argmax(), value_maps[agent][0].shape)
+            res = [x + value_maps[agent][1], y + value_maps[agent][2]]
+            if (res[0] >= len(self.cost_map)):
+                res[0] = self.line_squares[self.company_names[0]][0][0]
+            if (res[1] >= len(self.cost_map[0])):
+                res[1] = self.line_squares[self.company_names[0]][0][1]
+            return tuple(res)
         
     def fuzzy_enter_line(self, state, arr, x, y):
         # Tries to enter line at x,y
@@ -103,14 +136,14 @@ class Team(object):
         if tile.is_end_of_line():
             return (x,y)
         else:
-            for i in range(x-1, x+2):
-                for j in range(y-1, y+2):
+            for i in range(max(x-2, 0), min(x+3, len(arr))):
+                for j in range(max(y-2, 0), min(y+3, len(arr[0]))):
                     if abs(i+j - x-y) != 1:
                         continue
                     if arr[i][j].is_end_of_line() and arr[i][j].is_visible() and arr[i][j].get_line() == company:
                         return (i,j)
         return None
-    def get_lin_dir(x, y, i, j):
+    def get_lin_dir(self, x, y, i, j):
         diffx = i-x
         diffy = j-y
         if diffx < 0:
@@ -124,21 +157,21 @@ class Team(object):
         return Direction.NONE
 
     def enter_line(self, state, arr):
-        if arr[state.x, state.y].is_end_of_line():
+        if arr[state.x][state.y].is_end_of_line():
             return Direction.ENTER
         else:
             i = self.fuzzy_enter_line(state, arr, state.x, state.y)
             if i is None:
                 return None
             else:
-                return get_lin_dir((state.x, state.y), i)
+                return self.get_lin_dir(state.x, state.y, i[0], i[1])
 
     def should_i_stay(self, state, arr):
         s = state.line_pos
         if s == -1:
             return None
         points = self.company_points[arr[state.x][state.y].get_line()]
-        if points/s < threshold:
+        if points/(s+1) < self.threshold:
             self.blacklist[state.x][state.y] = 10
             return False
         return True
@@ -215,25 +248,27 @@ class Team(object):
             currLinePos = playerLinePos[linePosIdx]
             if (oldLinePos == 0 and currLinePos == -1):
                 (xCoord, yCoord) = playerCoord[linePosIdx]
-                companyName = self.board[yCoord][xCoord]
+                companyName = self.board[xCoord][yCoord].get_line()
+                if (companyName is None):
+                    companyName = self.company_names[0]
                 self.company_points[companyName] = self.company_points[companyName]//2
                 lineCoords = self.line_squares[companyName]
                 for (lineXCoord, lineYCoord) in lineCoords:
-                    self.value_map[lineYCoord, lineXCoord] = self.company_points[companyName]
+                    self.value_map[lineXCoord][lineYCoord] = self.company_points[companyName]
 
         # Update cost map based on current visibility
-        for yIdx in range(len(visible_board)):
-            for xIdx in range(len(visible_board[0])):
-                tile = visible_board[yIdx][xIdx]
-                if(self.cost_map[yIdx][xIdx] is not None and tile.is_visible()):
-                    (currCost, currCount) = self.cost_map[yIdx][xIdx]
-                    self.cost_map[yIdx][xIdx] = (currCost + tile.get_threshold(), currCount + 1)
+        for yIdx in range(len(visible_board[0])):
+            for xIdx in range(len(visible_board)):
+                tile = visible_board[xIdx][yIdx]
+                if(self.cost_map[xIdx][yIdx] is not None and tile.is_visible()):
+                    (currCost, currCount) = self.cost_map[xIdx][yIdx]
+                    self.cost_map[xIdx][yIdx] = (currCost + tile.get_threshold(), currCount + 1)
 
         newAIState = []
 
         def convert_path_to_dir(path):
             result = []
-            for i in range(path[:-1])
+            for i in range(len(path[:-1])):
                 result.append(Direction.get_dir(path[i], path[i+1]))
             return result
 
@@ -242,19 +277,22 @@ class Team(object):
             newState = AI_STATE.NO_STATE
             if(state == AI_STATE.NO_STATE):
                 newState = AI_STATE.LONG_DIST_EXPL
-                (goalX, goalY) = getOptPosition()
+                (goalX, goalY) = self.get_dest(stateIdx)
                 newAIState.append((newState, (goalX, goalY)))
             elif (state == AI_STATE.NAV_TO_CLOSE):
                 (goalX, goalY) = position
                 (playerX, playerY) = playerCoord[stateIdx]
                 if(playerX == goalX and playerY == goalY):
-                    newState = AI_STATE.NAV_TO_CLOSE
+                    newState = AI_STATE.ENTERING_LINE
                     newAIState.append((newState, None))
                 else:
                     newAIState.append((state, position))
             elif (state == AI_STATE.ENTERING_LINE):
                 currentLineState = playerLinePos[stateIdx]
-                if(currentLineState >= 0):
+                if(self.enter_line(states[stateIdx], visible_board) is None):
+                    newState = AI_STATE.LONG_DIST_EXPL
+                    newAIState.append((newState, self.get_dest()))
+                elif(currentLineState >= 0):
                     newState = AI_STATE.IN_LINE
                     newAIState.append((newState, None))
                 else:
@@ -263,19 +301,75 @@ class Team(object):
                 currentLineState = playerLinePos[stateIdx]
                 if (currentLineState == -1 or not self.should_i_stay(states[stateIdx], visible_board)):
                     newState = AI_STATE.LONG_DIST_EXPL
-                    (goalX, goalY) = getOptPosition()
+                    (goalX, goalY) = self.get_dest()
                     newAIState.append((newState, (goalX, goalY)))
                 else:
                     newAIState.append((state, None))
             else:
+                (currX, currY) = playerCoord[stateIdx]
+                (goalX, goalY) = position
                 if(self.should_enter_line(visible_board, states[stateIdx]) is not None):
                     newState = AI_STATE.NAV_TO_CLOSE
                     (goalX, goalY) = self.should_enter_line(visible_board, states[stateIdx])
                     newAIState.append((newState, (goalX, goalY)))
+                elif(currX == goalX and currY == goalY):
+                    (newX, newY) = self.get_dest()
+                    newAIState.append((state, (newX, newY)))
                 else:
                     newAIState.append((state, position))
+            
+        finalCommands = []
 
-        self.AI_STATE = newAIState
+        for stateIdx in range(len(newAIState)):
+            (state, position) = newAIState[stateIdx]
+            if(state == AI_STATE.NO_STATE):
+                #SHOULD NEVER HAVE THIS
+                finalCommands.append(Direction.UP)
+            if (state == AI_STATE.NAV_TO_CLOSE):
+                prevDir = playerDirections[stateIdx]
+                currProgress = playerProgress[stateIdx]
+                currThreshold = playerThreshold[stateIdx]
+                numMoreMoves = currThreshold - currProgress
+                if (currProgress == 0):
+                    (currX, currY) = playerCoord[stateIdx]
+                    (goalX, goalY) = position
+                    if (currX == goalX and currY == goalY):
+                        newAIState[stateIdx] = (AI_STATE.ENTERING_LINE, None)
+                    else:
+                        fullPathFromDij = dijkstra((currX, currY), position, self.cost_map)
+                        listOfDirs = convert_path_to_dir(fullPathFromDij)
+                        nextMove = listOfDirs[0]
+                        finalCommands.append(nextMove)
+                else:
+                    finalCommands.append(prevDir)
+            if (state == AI_STATE.ENTERING_LINE):
+                directionToCommand = self.enter_line(states[stateIdx], visible_board)
+                finalCommands.append(directionToCommand)
+            if(state == AI_STATE.IN_LINE):
+                finalCommands.append(Direction.NONE)
+            else:
+                prevDir = playerDirections[stateIdx]
+                currProgress = playerProgress[stateIdx]
+                currThreshold = playerThreshold[stateIdx]
+                numMoreMoves = currThreshold - currProgress
+                if (currProgress == 0):
+                    (currX, currY) = playerCoord[stateIdx]
+                    if (position is None):
+                        newPosition = self.line_squares[self.company_names[0]][0]
+                        position = newPosition
+                    (goalX, goalY) = position
+                    if(currX == goalX and currY == goalY):
+                        finalCommands.append(Direction.NONE)
+                        newAIState[stateIdx] = (AI_STATE.ENTERING_LINE, None)
+                    else:
+                        fullPathFromDij = dijkstra((currX, currY), position, self.cost_map)
+                        listOfDirs = convert_path_to_dir(fullPathFromDij)
+                        nextMove = listOfDirs[0]
+                        finalCommands.append(nextMove)
+                else:
+                    finalCommands.append(prevDir)
+
+        self.ai_state = newAIState
         self.prev_score = score
         self.prev_line_states = playerLinePos
-        return [Direction.LEFT, Direction.LEFT, Direction.LEFT, Direction.LEFT]
+        return finalCommands
